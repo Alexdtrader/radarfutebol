@@ -1,43 +1,44 @@
-
 import os
 import requests
 
-# Pega as chaves que você salvou nos Secrets do GitHub
 NEWS_KEY = os.getenv('NEWS_API_KEY')
 WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK')
 
 def buscar_noticias():
-    # Procura notícias de futebol em português
-    url = f'https://newsapi.org/v2/everything?q=futebol+soccer&language=pt&sortBy=publishedAt&apiKey={NEWS_KEY}'
+    # Aumentamos a busca para incluir "soccer" e "futebol" para garantir resultados
+    url = f'https://newsapi.org/v2/everything?q=futebol+OR+soccer&language=pt&sortBy=publishedAt&apiKey={NEWS_KEY}'
+    
+    print(f"Buscando notícias em: {url.replace(NEWS_KEY, 'ESCONDIDO')}") # Log de depuração
     
     try:
         response = requests.get(url)
+        print(f"Status da API: {response.status_code}") # Deve ser 200
+        
         dados = response.json()
         
-        # Verifica se a API retornou artigos
-        if "articles" in dados and len(dados["articles"]) > 0:
-            return dados["articles"][:3] # Retorna as 3 notícias mais recentes
-        else:
-            print("Nenhuma notícia encontrada no momento.")
+        if response.status_code != 200:
+            print(f"Erro da API: {dados.get('message', 'Erro desconhecido')}")
             return []
+
+        artigos = dados.get('articles', [])
+        print(f"Total de notícias encontradas: {len(artigos)}")
+        return artigos[:3] 
     except Exception as e:
-        print(f"Erro ao buscar notícias: {e}")
+        print(f"Falha na conexão: {e}")
         return []
 
 def enviar_para_discord(artigo):
-    # Formata a mensagem para o Discord
-    mensagem = {
-        "content": f"**⚽ ÚLTIMA HORA:** {artigo['title']}\n{artigo['url']}"
-    }
-    
-    try:
-        requests.post(WEBHOOK_URL, json=mensagem)
-        print(f"Notícia enviada: {artigo['title']}")
-    except Exception as e:
-        print(f"Erro ao enviar para o Discord: {e}")
+    mensagem = {"content": f"⚽ **{artigo['title']}**\n{artigo['url']}"}
+    r = requests.post(WEBHOOK_URL, json=mensagem)
+    if r.status_code == 204:
+        print("Mensagem enviada com sucesso para o Discord!")
+    else:
+        print(f"Erro ao enviar para o Discord: {r.status_code} - Texto: {r.text}")
 
-# Execução do Script
 if __name__ == "__main__":
-    lista_noticias = buscar_noticias()
-    for noticia in lista_noticias:
-        enviar_para_discord(noticia)
+    if not NEWS_KEY or not WEBHOOK_URL:
+        print("ERRO: Variáveis de ambiente NEWS_API_KEY ou DISCORD_WEBHOOK não encontradas!")
+    else:
+        noticias = buscar_noticias()
+        for n in noticias:
+            enviar_para_discord(n)
