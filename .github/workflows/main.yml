@@ -1,0 +1,29 @@
+name: Bot Futebol Automatico
+
+on:
+  schedule:
+    # Isso faz o bot rodar a cada 1 hora
+    - cron: '0 * * * *'
+  workflow_dispatch: # Permite que você clique em um botão para rodar na hora
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar codigo do GitHub
+        uses: actions/checkout@v3
+
+      - name: Instalar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Instalar bibliotecas
+        run: pip install -r requirements.txt
+
+      - name: Rodar o script de noticias
+        env:
+          # Aqui ele liga o código aos Secrets que você configurou
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: python main.py
